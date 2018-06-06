@@ -33,20 +33,22 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
     
     var isFloorPlaneRendered = false
     
-
     var center : SCNVector3?
     let formatter = NumberFormatter()
-
-    @IBAction func heightchanged(_ sender: UISlider) {
-        let heightd=sender.value
-        box.move(side: .top, to: heightd)
-    }
 
     var box: Box!
     var hitTestPlane: SCNNode!
     var floor: SCNNode!
     
     var currentAnchor: ARAnchor?
+    
+    var backBox: Furniture!
+    var leftBox: Furniture!
+    var rightBox: Furniture!
+    var topBox: Furniture!
+    var botBox: Furniture!
+    var shelfInitialized = false
+    var shelfThickness:Float = 0.05
     
     //UNCLEAR
     struct RenderingCategory: OptionSet {
@@ -123,6 +125,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         case waitingForLocation
         case draggingInitialWidth, draggingInitialLength
         case waitingForFaceDrag, draggingFace(side: Box.Side, dragStart: SCNVector3)
+        case displayingFurniture
     }
     
     //For each interaction mode
@@ -135,7 +138,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
                 hitTestPlane.isHidden = true
                 floor.isHidden = true
                 
-                planesShown = false
+                planesShown = true
                 
             case .draggingInitialWidth, .draggingInitialLength:
                 
@@ -184,6 +187,9 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
                     hitTestPlane.boundingBox.min = SCNVector3(x: 0, y: -1000, z: -1000)
                     hitTestPlane.boundingBox.max = SCNVector3(x: 0, y: 1000, z: 1000)
                 }
+                
+            case .displayingFurniture:
+                break
             }
         }
     }
@@ -376,6 +382,59 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         currentAnchor = nil
     }
     
+    func initShelf() {
+        //box.isHidden = true
+        box.hideFaces()
+        
+        backBox = Furniture()
+        leftBox = Furniture()
+        rightBox = Furniture()
+        topBox = Furniture()
+        botBox = Furniture()
+        
+        box.addChildNode(backBox)
+        box.addChildNode(leftBox)
+        box.addChildNode(rightBox)
+        box.addChildNode(topBox)
+        box.addChildNode(botBox)
+        
+        shelfInitialized = true
+        
+        //set floor surface
+        //let floorSurface = SCNFloor()
+        //floorSurface.reflectivity = 0.2
+        //floorSurface.reflectionFalloffEnd = 0.05
+        //floorSurface.reflectionCategoryBitMask = RenderingCategory.reflected.rawValue
+        // Floor scene reflections are blended with the diffuse color's transparency mask, so if diffuse is transparent then no reflection will be shown. To get around this, we make the floor black and use additive blending so that only the brighter reflection is shown.
+        //floorSurface.firstMaterial?.diffuse.contents = UIColor.black
+        //floorSurface.firstMaterial?.writesToDepthBuffer = false
+        //floorSurface.firstMaterial?.blendMode = .add
+        //floor = SCNNode(geometry: floorSurface)
+        //box.addChildNode(floor)
+        //box.categoryBitMask |= RenderingCategory.reflected.rawValue
+    }
+    
+    func updateShelf(min: SCNVector3, max: SCNVector3, thickness: Float ) {
+        if (!shelfInitialized) { initShelf() }
+        
+        let backMax = SCNVector3(x: max.x - thickness,  y: max.y - thickness,   z: min.z + thickness)
+        let backMin = SCNVector3(x: min.x + thickness,  y: min.y + thickness,   z: min.z)
+        let leftMax = SCNVector3(x: min.x + thickness,  y: max.y,               z: max.z)
+        let leftMin = SCNVector3(x: min.x,              y: min.y,               z: min.z)
+        let rightMax = SCNVector3(x: max.x,             y: max.y,               z: max.z)
+        let rightMin = SCNVector3(x: max.x - thickness, y: min.y,               z: min.z)
+        let topMax = SCNVector3(x: max.x - thickness,   y: max.y,               z: max.z)
+        let topMin = SCNVector3(x: min.x + thickness,   y: max.y - thickness,   z: min.z)
+        let botMax = SCNVector3(x: max.x - thickness,   y: min.y + thickness,   z: max.z)
+        let botMin = SCNVector3(x: min.x + thickness,   y: min.y,               z: min.z)
+        
+        backBox.resizeTo(min: backMin, max: backMax)
+        leftBox.resizeTo(min: leftMin, max: leftMax)
+        rightBox.resizeTo(min: rightMin, max: rightMax)
+        topBox.resizeTo(min: topMin, max: topMax)
+        botBox.resizeTo(min: botMin, max: botMax)
+    }
+    
     func renderFloorPlane(anchor: ARAnchor) -> SCNNode? {
         
         if isFloorPlaneRendered { return nil }
@@ -420,6 +479,13 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         }
         node.transform = SCNMatrix4(planeAnchor.transform)
         node.pivot = SCNMatrix4(translationByX: -planeAnchor.center.x, y: -planeAnchor.center.y, z: -planeAnchor.center.z)
+    }
+    
+    //on height slider
+    @IBAction func heightchanged(_ sender: UISlider) {
+        let heightd=sender.value
+        box.move(side: .top, to: heightd)
+        updateShelf(min: box.getMin(), max: box.getMax(), thickness: shelfThickness)
     }
     
     // ---------------------------------------------------
@@ -581,6 +647,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
                 }
                 
                 box.move(side: side, to: distanceForAxis)
+                updateShelf(min: box.getMin(), max: box.getMax(), thickness: shelfThickness)
             }
         case .ended, .cancelled:
             mode = .waitingForFaceDrag

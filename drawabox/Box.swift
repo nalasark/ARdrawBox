@@ -174,7 +174,7 @@ class Box: SCNNode {
         let plane = SCNPlane()
         let node = makeNode(with: plane)
         node.name = side.rawValue//string
-        node.geometry?.firstMaterial?.transparency = 0.1
+        node.geometry?.firstMaterial?.transparency = 0.3
         node.geometry?.firstMaterial?.writesToDepthBuffer = false
         
         // Rotate each face to the appropriate facing
@@ -206,13 +206,29 @@ class Box: SCNNode {
         face.geometry?.firstMaterial?.writesToDepthBuffer = (opacity >= 1.0) //depth buffer to determine the ordering of rendered surfaces relative to the viewer.
     }
     
+    func hideFaces() {
+        for (side, _) in faces {
+            setOpacity(0, for: side)
+        }
+    }
+    
+    func getMin() -> SCNVector3{
+        let (min, _) = boundingBox
+        return min
+    }
+    
+    func getMax() -> SCNVector3{
+        let (_, max) = boundingBox
+        return max
+    }
+    
     func highlight(side: Side) {
         setOpacity(1.0, for: side)
     }
     
     func clearHighlights() {
         for (side, _) in faces {
-            setOpacity(0.1, for: side)
+            setOpacity(0, for: side)
         }
     }
     
@@ -233,6 +249,8 @@ class Box: SCNNode {
         case .min: min.setAxis(side.axis, to: extent)
         case .max: max.setAxis(side.axis, to: extent)
         }
+        //min.setAxis(side.axis, to: extent)
+        //max.setAxis(side.axis, to: extent)
         
         resizeTo(min: min, max: max)
     }

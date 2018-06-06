@@ -174,7 +174,8 @@ class Furniture: SCNNode {
         let plane = SCNPlane()
         let node = makeNode(with: plane)
         node.name = side.rawValue//string
-        node.geometry?.firstMaterial?.transparency = 0.1
+        node.geometry?.firstMaterial?.transparency = 0.7
+        node.geometry?.firstMaterial?.diffuse.contents = UIColor.brown
         node.geometry?.firstMaterial?.writesToDepthBuffer = false
         
         // Rotate each face to the appropriate facing
@@ -207,12 +208,14 @@ class Furniture: SCNNode {
     }
     
     func highlight(side: Side) {
-        setOpacity(1.0, for: side)
+        for (side, _) in faces {
+            setOpacity(1.0, for: side)
+        }
     }
     
     func clearHighlights() {
         for (side, _) in faces {
-            setOpacity(0.1, for: side)
+            setOpacity(0.5, for: side)
         }
     }
     
@@ -225,16 +228,6 @@ class Furniture: SCNNode {
             .front: faceFront,
             .back: faceBack,
         ]
-    }
-    
-    func move(side: Side, to extent: Float) {
-        var (min, max) = boundingBox
-        switch side.edge {
-        case .min: min.setAxis(side.axis, to: extent)
-        case .max: max.setAxis(side.axis, to: extent)
-        }
-        
-        resizeTo(min: min, max: max)
     }
     
     func resizeTo(min minExtents: SCNVector3, max maxExtents: SCNVector3) {
